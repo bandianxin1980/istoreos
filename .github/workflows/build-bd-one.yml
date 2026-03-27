@@ -55,7 +55,7 @@ jobs:
       - name: Load config
         run: |
           cp -f config.seed .config
-          make defconfig
+          yes "" | make oldconfig
 
       - name: Compile firmware
         run: |
