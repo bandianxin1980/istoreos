@@ -64,8 +64,7 @@ jobs:
       - name: Prepare firmware output
         run: |
           mkdir -p firmware
-          cp -f bin/targets/rockchip/armv8/*.img firmware/
-          cp -f bin/targets/rockchip/armv8/*.img.gz firmware/
+          find bin/targets/rockchip/armv8 -name "*.img" -o -name "*.img.gz" -exec cp {} firmware/ \;
           ls -lh firmware/
 
       - name: Upload firmware
