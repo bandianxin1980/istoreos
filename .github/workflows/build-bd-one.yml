@@ -12,7 +12,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
         with:
-          ref: 24.10
+          ref: istoreos-24.10
 
       - name: Install dependencies
         run: |
