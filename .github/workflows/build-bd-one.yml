@@ -1,6 +1,10 @@
-name: Build BD-ONE iStoreOS 24.10
+name: Build iStoreOS for BD-ONE (rk3568)
+
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - istoreos-24.10
 
 jobs:
   build:
@@ -12,45 +16,61 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: istoreos-24.10
+          fetch-depth: 1
 
-      - name: Install full dependencies
+      - name: Free disk space
         run: |
-          sudo apt update
+          sudo df -h
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/share/swift /opt/ghc
+          sudo apt clean
+          sudo df -h
+
+      - name: Install build dependencies
+        run: |
+          sudo apt update -y
           sudo apt install -y ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
-          bzip2 ccache cmake cpio curl device-tree-compiler fastjar flex gawk gettext gcc-multilib g++-multilib \
-          git gperf haveged help2man intltool libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
-          libmpc-dev libmpfr-dev libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz \
-          mkisofs msmtp nano ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-elftools \
-          qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev
+          bzip2 ccache cmake cpio curl device-tree-compiler flex gawk gettext gcc-multilib g++-multilib \
+          git gperf libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev libmpc-dev libmpfr-dev \
+          libncurses5-dev libncursesw5-dev libreadline-dev libssl-dev libtool lrzsz mkisofs \
+          ninja-build p7zip p7zip-full patch pkgconf python3 python3-pip python3-pyelftools \
+          qemu-utils rsync scons squashfs-tools subversion swig texinfo uglifyjs upx-ucl unzip \
+          vim wget xmlto xxd zlib1g-dev haveged
+
+      - name: Prepare cache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: ${{ runner.os }}-istoreos-${{ github.sha }}
+          restore-keys: ${{ runner.os }}-istoreos-
 
       - name: Update feeds
         run: |
+          ./scripts/feeds clean
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      - name: Replace bd-one.dtb
+      - name: Apply device tree (bd-one SATA 正常)
         run: |
           cp -f bd-one.dtb target/linux/rockchip/armv8/dts/bd-one.dtb
 
-      - name: Load config.seed
+      - name: Load config
         run: |
           cp -f config.seed .config
           make defconfig
 
-      - name: Start build
+      - name: Compile firmware
         run: |
           make -j$(nproc) V=s
 
-      - name: Collect firmware
+      - name: Prepare firmware output
         run: |
           mkdir -p firmware
-          cp -f bin/targets/rockchip/armv8/*.img firmware/ 2>/dev/null || true
-          cp -f bin/targets/rockchip/armv8/*.img.gz firmware/ 2>/dev/null || true
+          cp -f bin/targets/rockchip/armv8/*.img firmware/
+          cp -f bin/targets/rockchip/armv8/*.img.gz firmware/
           ls -lh firmware/
 
-      - name: Upload firmware to GitHub
+      - name: Upload firmware
         uses: actions/upload-artifact@v4
         with:
-          name: bd-one-istoreos-24.10-firmware
+          name: bd-one-istoreos-24.10-final
           path: firmware/
           retention-days: 7
